@@ -3,7 +3,8 @@ export interface EventData {
   name: string;
   date: string;
   venue: string;
-  time: string;
+  time_from: string;
+  time_to: string;
   createdAt: string;
 }
 
