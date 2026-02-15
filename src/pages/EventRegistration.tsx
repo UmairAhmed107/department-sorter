@@ -9,11 +9,11 @@ import { toast } from "sonner";
 
 const EventRegistration = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", date: "", venue: "", time: "" });
+  const [form, setForm] = useState({ name: "", date: "", venue: "", time_from: "", time_to: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.date || !form.venue || !form.time) {
+    if (!form.name || !form.date || !form.venue || !form.time_from || !form.time_to) {
       toast.error("Please fill all fields");
       return;
     }
@@ -25,7 +25,7 @@ const EventRegistration = () => {
     };
     saveEvent(event);
     toast.success("Event registered successfully!");
-    setForm({ name: "", date: "", venue: "", time: "" });
+    setForm({ name: "", date: "", venue: "", time_from: "", time_to: "" });
   };
 
   return (
@@ -73,14 +73,25 @@ const EventRegistration = () => {
                 onChange={(e) => setForm({ ...form, venue: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={form.time}
-                onChange={(e) => setForm({ ...form, time: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="time_from">From</Label>
+                <Input
+                  id="time_from"
+                  type="time"
+                  value={form.time_from}
+                  onChange={(e) => setForm({ ...form, time_from: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time_to">To</Label>
+                <Input
+                  id="time_to"
+                  type="time"
+                  value={form.time_to}
+                  onChange={(e) => setForm({ ...form, time_to: e.target.value })}
+                />
+              </div>
             </div>
             <Button type="submit" className="w-full">
               <Check className="h-4 w-4 mr-2" />
