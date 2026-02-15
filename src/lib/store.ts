@@ -17,12 +17,21 @@ export interface AdminLog {
 
 // Department mapping based on ID prefix or patterns
 export const DEPARTMENTS: Record<string, string[]> = {
-  "School of Computer Science": ["BSc CS", "BCA", "MCA", "MSc CS", "B.Tech CSE"],
-  "School of Commerce": ["B.Com", "M.Com", "BBA", "MBA"],
-  "School of Science": ["BSc Physics", "BSc Chemistry", "BSc Mathematics", "MSc Physics", "MSc Chemistry"],
-  "School of Arts": ["BA English", "BA History", "BA Economics", "MA English", "MA History"],
-  "School of Engineering": ["B.Tech ECE", "B.Tech ME", "B.Tech CE", "M.Tech"],
-  "School of Law": ["BA LLB", "LLB", "LLM"],
+  "V-SPARC": ["BAR"],
+  "VAIAL": ["BAG"],
+  "SCHEME": ["BCM"],
+  "SMEC": ["BME", "MMT", "BMM", "BMV", "BMA"],
+  "V-SIGN": ["BID"],
+  "SELECT": ["BEE", "BEL", "BEI"],
+  "SCE": ["BCL"],
+  "SBST": ["BBT", "MSI"],
+  "SSL": ["BCC", "BBP", "BBC", "BFN"],
+  "SCOPE": ["BCE", "BBS", "BDS", "BCT", "BKT", "BAI", "BCI", "BCB", "MID", "MIC"],
+  "SCORE": ["BIT", "BCA", "BCS", "BDE", "BYB", "MIS", "MCA", "MAG"],
+  "VIT-BS": ["BBA"],
+  "VSmart": ["BAM", "BVC"],
+  "HOT": ["BHA"],
+  "SENSE": ["BEC", "BML", "BVD"],
 };
 
 export function getEvents(): EventData[] {

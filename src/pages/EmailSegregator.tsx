@@ -34,10 +34,12 @@ const EmailSegregator = () => {
   };
 
   const detectDepartment = (courseOrId: string): { school: string; course: string } | null => {
-    const val = courseOrId.toLowerCase().trim();
+    const val = courseOrId.toUpperCase().trim();
     for (const [school, courses] of Object.entries(DEPARTMENTS)) {
       for (const course of courses) {
-        if (val.includes(course.toLowerCase()) || val.includes(course.replace(/\s+/g, "").toLowerCase())) {
+        const code = course.toUpperCase();
+        // Match exact code or code embedded in student ID (e.g., "21BCE1234")
+        if (val === code || new RegExp(`\\b${code}\\b`).test(val) || new RegExp(`\\d{2}${code}\\d+`).test(val)) {
           return { school, course };
         }
       }
@@ -97,7 +99,8 @@ const EmailSegregator = () => {
         if (!eventName && cols.length > 1) eventName = cols[1];
         if (!courseStr && cols.length > 2) courseStr = cols[2];
 
-        const dept = detectDepartment(courseStr);
+        // Try course column first, then student ID (branch code often embedded in ID like "21BCE1234")
+        const dept = detectDepartment(courseStr) || detectDepartment(studentId);
         const matchedEvent = eventMap.get(eventName.toLowerCase());
         const eventTime = matchedEvent?.time || "";
 
