@@ -138,18 +138,23 @@ const EmailSegregator = () => {
           byCourse[s.course].push(s);
         });
 
+        const wsData: (string | number)[][] = [
+          [`School: ${school}`, `Date: ${selectedDate}`],
+          [],
+        ];
+
         for (const [course, courseStudents] of Object.entries(byCourse)) {
-          const wsData = [
-            [`School: ${school}`, `Date: ${selectedDate}`],
-            [],
-            ["Student ID", "Event Name", "Event Timing"],
-            ...courseStudents.map((s) => [s.studentId, s.eventName, s.eventTiming]),
-          ];
-          const ws = XLSX.utils.aoa_to_sheet(wsData);
-          ws["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 20 }];
-          const safeName = course.replace(/[\\\/\?\*\[\]]/g, "").substring(0, 31);
-          XLSX.utils.book_append_sheet(wb, ws, safeName);
+          wsData.push([`Course: ${course}`]);
+          wsData.push(["Student ID", "Event Name", "Event Timing"]);
+          courseStudents.forEach((s) => {
+            wsData.push([s.studentId, s.eventName, s.eventTiming]);
+          });
+          wsData.push([]); // blank row between tables
         }
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, ws, "All Courses");
 
         const fileName = `${school.replace(/\s+/g, "_")}_${dateStr}.xlsx`;
         const wbOut = XLSX.write(wb, { bookType: "xlsx", type: "array" });
