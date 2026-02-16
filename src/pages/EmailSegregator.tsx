@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, FileSpreadsheet, Upload, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ const EmailSegregator = () => {
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [eventFiles, setEventFiles] = useState<Record<string, File>>({});
   const [processing, setProcessing] = useState(false);
+  const [showDownloads, setShowDownloads] = useState(false);
+  const schoolFilesRef = useRef<{ name: string; data: ArrayBuffer }[]>([]);
+  const zipBlobRef = useRef<Blob | null>(null);
 
   const filteredEvents = events.filter((e) => e.date === selectedDate);
 
@@ -129,6 +132,7 @@ const EmailSegregator = () => {
 
       const zip = new JSZip();
       const dateStr = selectedDate.replace(/-/g, "_");
+      const schoolFiles: { name: string; data: ArrayBuffer }[] = [];
 
       for (const [school, students] of Object.entries(deptData)) {
         const wb = XLSX.utils.book_new();
@@ -138,31 +142,65 @@ const EmailSegregator = () => {
           byCourse[s.course].push(s);
         });
 
-        const wsData: (string | number)[][] = [
-          [`School: ${school}`, `Date: ${selectedDate}`],
-          [],
-        ];
+        // Build horizontal layout: courses side by side, 4 columns per course (3 data + 1 gap)
+        const courses = Object.entries(byCourse);
+        const colsPerCourse = 4; // ID, Event, Time, gap
+        const maxRows = Math.max(...courses.map(([, s]) => s.length));
 
-        for (const [course, courseStudents] of Object.entries(byCourse)) {
-          wsData.push([`Course: ${course}`]);
-          wsData.push(["Student ID", "Event Name", "Event Timing"]);
-          courseStudents.forEach((s) => {
-            wsData.push([s.studentId, s.eventName, s.eventTiming]);
+        // Row 0: School header
+        const headerRow: string[] = [`School: ${school}`, `Date: ${selectedDate}`];
+        // Row 1: blank
+        // Row 2: course names
+        const courseNameRow: string[] = [];
+        // Row 3: column headers
+        const colHeaderRow: string[] = [];
+
+        courses.forEach(([course], idx) => {
+          const startCol = idx * colsPerCourse;
+          courseNameRow[startCol] = `Course: ${course}`;
+          colHeaderRow[startCol] = "Student ID";
+          colHeaderRow[startCol + 1] = "Event Name";
+          colHeaderRow[startCol + 2] = "Event Timing";
+        });
+
+        const wsData: string[][] = [headerRow, [], courseNameRow, colHeaderRow];
+
+        for (let r = 0; r < maxRows; r++) {
+          const row: string[] = [];
+          courses.forEach(([, courseStudents], idx) => {
+            const startCol = idx * colsPerCourse;
+            const s = courseStudents[r];
+            row[startCol] = s ? s.studentId : "";
+            row[startCol + 1] = s ? s.eventName : "";
+            row[startCol + 2] = s ? s.eventTiming : "";
           });
-          wsData.push([]); // blank row between tables
+          wsData.push(row);
         }
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 20 }];
+        // Set column widths
+        const colWidths: { wch: number }[] = [];
+        courses.forEach((_, idx) => {
+          colWidths[idx * colsPerCourse] = { wch: 20 };
+          colWidths[idx * colsPerCourse + 1] = { wch: 25 };
+          colWidths[idx * colsPerCourse + 2] = { wch: 18 };
+          colWidths[idx * colsPerCourse + 3] = { wch: 3 };
+        });
+        ws["!cols"] = colWidths;
         XLSX.utils.book_append_sheet(wb, ws, "All Courses");
 
         const fileName = `${school.replace(/\s+/g, "_")}_${dateStr}.xlsx`;
         const wbOut = XLSX.write(wb, { bookType: "xlsx", type: "array" });
         zip.file(fileName, wbOut);
+        schoolFiles.push({ name: fileName, data: wbOut });
       }
 
+      // Store for individual download
+      schoolFilesRef.current = schoolFiles;
+
       const blob = await zip.generateAsync({ type: "blob" });
-      saveAs(blob, `Segregated_Sheets_${dateStr}.zip`);
+      zipBlobRef.current = blob;
+      setShowDownloads(true);
 
       addAdminLog("Spreadsheet Segregated", `Processed ${totalRows} rows into ${Object.keys(deptData).length} department files`);
       toast.success(`Generated ${Object.keys(deptData).length} department files!`);
@@ -286,11 +324,45 @@ const EmailSegregator = () => {
         )}
 
         {/* Process Button */}
-        {allFilesUploaded && (
+        {allFilesUploaded && !showDownloads && (
           <Button className="w-full" size="lg" onClick={processFiles} disabled={processing}>
             <Download className="h-4 w-4 mr-2" />
-            {processing ? "Processing..." : "Segregate & Download"}
+            {processing ? "Processing..." : "Segregate & Process"}
           </Button>
+        )}
+
+        {/* Download Options */}
+        {showDownloads && (
+          <div className="bg-card border rounded-xl p-6 space-y-4">
+            <h3 className="font-display font-semibold text-card-foreground">Download Options</h3>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => {
+                if (zipBlobRef.current) saveAs(zipBlobRef.current, `Segregated_Sheets_${selectedDate.replace(/-/g, "_")}.zip`);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download All as ZIP
+            </Button>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Or download individual school files:</p>
+              {schoolFilesRef.current.map((f) => (
+                <Button
+                  key={f.name}
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    const blob = new Blob([f.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                    saveAs(blob, f.name);
+                  }}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  {f.name}
+                </Button>
+              ))}
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -4,28 +4,66 @@ import { ArrowLeft, CalendarPlus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveEvent, type EventData } from "@/lib/store";
 import { toast } from "sonner";
 
 const EventRegistration = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", date: "", venue: "", time_from: "", time_to: "" });
+  const [form, setForm] = useState({
+    name: "", date: "", venue: "",
+    hour_from: "", min_from: "00", period_from: "AM",
+    hour_to: "", min_to: "00", period_to: "AM",
+  });
+
+  const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+  const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
+
+  const parseTime12 = (t: string) => {
+    const [time, period] = t.split(" ");
+    if (!time || !period) return null;
+    let [h, m] = time.split(":").map(Number);
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  };
+
+  const formatTime12 = (hour: string, minute: string, period: string) =>
+    `${hour}:${minute} ${period}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.date || !form.venue || !form.time_from || !form.time_to) {
+    const timeFrom = formatTime12(form.hour_from, form.min_from, form.period_from);
+    const timeTo = formatTime12(form.hour_to, form.min_to, form.period_to);
+
+    if (!form.name || !form.date || !form.venue || !form.hour_from || !form.min_from || !form.hour_to || !form.min_to) {
       toast.error("Please fill all fields");
+      return;
+    }
+
+    const fromMins = parseTime12(timeFrom);
+    const toMins = parseTime12(timeTo);
+    if (fromMins !== null && toMins !== null && fromMins >= toMins) {
+      toast.error("'From' time must be before 'To' time");
       return;
     }
 
     const event: EventData = {
       id: crypto.randomUUID(),
-      ...form,
+      name: form.name,
+      date: form.date,
+      venue: form.venue,
+      time_from: timeFrom,
+      time_to: timeTo,
       createdAt: new Date().toISOString(),
     };
     saveEvent(event);
     toast.success("Event registered successfully!");
-    setForm({ name: "", date: "", venue: "", time_from: "", time_to: "" });
+    setForm({
+      name: "", date: "", venue: "",
+      hour_from: "", min_from: "00", period_from: "AM",
+      hour_to: "", min_to: "00", period_to: "AM",
+    });
   };
 
   return (
@@ -73,24 +111,44 @@ const EventRegistration = () => {
                 onChange={(e) => setForm({ ...form, venue: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="time_from">From</Label>
-                <Input
-                  id="time_from"
-                  type="time"
-                  value={form.time_from}
-                  onChange={(e) => setForm({ ...form, time_from: e.target.value })}
-                />
+            <div className="space-y-2">
+              <Label>From</Label>
+              <div className="flex gap-2">
+                <Select value={form.hour_from} onValueChange={(v) => setForm({ ...form, hour_from: v })}>
+                  <SelectTrigger className="w-20"><SelectValue placeholder="HH" /></SelectTrigger>
+                  <SelectContent>{hours.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.min_from} onValueChange={(v) => setForm({ ...form, min_from: v })}>
+                  <SelectTrigger className="w-20"><SelectValue placeholder="MM" /></SelectTrigger>
+                  <SelectContent>{minutes.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.period_from} onValueChange={(v) => setForm({ ...form, period_from: v })}>
+                  <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="PM">PM</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="time_to">To</Label>
-                <Input
-                  id="time_to"
-                  type="time"
-                  value={form.time_to}
-                  onChange={(e) => setForm({ ...form, time_to: e.target.value })}
-                />
+            </div>
+            <div className="space-y-2">
+              <Label>To</Label>
+              <div className="flex gap-2">
+                <Select value={form.hour_to} onValueChange={(v) => setForm({ ...form, hour_to: v })}>
+                  <SelectTrigger className="w-20"><SelectValue placeholder="HH" /></SelectTrigger>
+                  <SelectContent>{hours.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.min_to} onValueChange={(v) => setForm({ ...form, min_to: v })}>
+                  <SelectTrigger className="w-20"><SelectValue placeholder="MM" /></SelectTrigger>
+                  <SelectContent>{minutes.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.period_to} onValueChange={(v) => setForm({ ...form, period_to: v })}>
+                  <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="PM">PM</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <Button type="submit" className="w-full">
